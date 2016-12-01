@@ -88,7 +88,7 @@ def get_goties():
     LOG.info("Chose order %s", order)
 
     # SECRET DON'T LOOK!
-    method = PickMethods.random#random.choice(list(PickMethods))
+    method = random.choice(list(PickMethods))
     if method == PickMethods.chronological:
         LOG.info("Choosing chronologically.")
         goties = handle_offset_get(year_filter=year_filter,
@@ -130,7 +130,7 @@ def get_goties():
         out += "{}. {}\n".format(i+1, name)
 
     # Render text as image.
-    img = Image.new("RGB", (1000, 500), (255, 255, 255))
+    img = Image.new("RGB", (1200, 500), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 40)
     draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
