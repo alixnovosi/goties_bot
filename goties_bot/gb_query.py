@@ -23,6 +23,7 @@ HEADERS = {"User-Agent": USER_AGENT}
 
 NUMBER_GOTIES = 10
 
+GOTY_FILENAME = "goty.png"
 GOTIES_FILENAME = "goties.png"
 
 with open("API_KEY", "r") as f:
@@ -135,6 +136,26 @@ def get_goties():
     font = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 40)
     draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
     img.save(GOTIES_FILENAME)
+
+    # Save image of first game.
+    img_dict = goties[0]["image"]
+
+    # TODO figure out which of these is actually guaranteed instead of just guessing + if/elseing.
+    if "medium_url" in img_dict:
+        url = img_dict["medium_url"]
+    LOG.info("Cover art for #1 GOTY: {}".format(url))
+
+    r = requests.get(url, headers=HEADERS, stream=True)
+
+    chunks = r.iter_content(chunk_size=1024)
+
+    open(GOTY_FILENAME, "a", encoding="UTF-8").close()
+    with open(GOTY_FILENAME, "wb") as stream:
+        for chunk in chunks:
+            if not chunk:
+                return
+            stream.write(chunk)
+            stream.flush()
 
     LOG.info("Your goties are: \n%s", out)
     return (year, out)

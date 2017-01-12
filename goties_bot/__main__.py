@@ -25,7 +25,11 @@ if __name__ == "__main__":
         TXT = "The Games of the Year for {} are:".format(year)
 
         try:
-            API.update_with_media(gb_query.GOTIES_FILENAME, status=TXT)
+            images = (gb_query.GOTY_FILENAME, gb_query.GOTIES_FILENAME)
+            media_ids = [API.media_upload(i).media_id_string for i in images]
+            LOG.debug("Media ids for uploaded images: {}".format(media_ids))
+            API.update_status(status=TXT, media_ids=media_ids)
+            # API.update_with_media(gb_query.GOTIES_FILENAME, status=TXT)
 
         except tweepy.TweepError as e:
             LOG.critical("A Tweepy error we don't know how to handle happened.")
