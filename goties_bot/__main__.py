@@ -1,19 +1,20 @@
 """Main class for bot."""
 
-import subprocess
+import os
 import time
 
-import tweepy
-
 import gb_query
-import send
 import util
+
+import botskeleton
 
 # Delay between tweets in seconds.
 DELAY = 7200
 
 if __name__ == "__main__":
-    API = send.auth_and_get_api()
+
+    SECRETS_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), "SECRETS")
+    api = botskeleton.BotSkeleton(SECRETS_DIR, bot_name="goties_bot")
 
     LOG = util.set_up_logging()
 
@@ -24,18 +25,10 @@ if __name__ == "__main__":
         LOG.info("Sending out goties for %s.", year)
         TXT = "The Games of the Year for {} are:".format(year)
 
-        try:
-            images = (gb_query.GOTY_FILENAME, gb_query.GOTIES_FILENAME)
-            media_ids = [API.media_upload(i).media_id_string for i in images]
-            LOG.debug("Media ids for uploaded images: {}".format(media_ids))
-            API.update_status(status=TXT, media_ids=media_ids)
-            # API.update_with_media(gb_query.GOTIES_FILENAME, status=TXT)
-
-        except tweepy.TweepError as e:
-            LOG.critical("A Tweepy error we don't know how to handle happened.")
-            LOG.critical("Error reason: {}".format(e.reason))
-            LOG.critical("Exiting.")
-            break
+        images = [gb_query.GOTY_FILENAME, gb_query.GOTIES_FILENAME]
+        media_ids = api.upload_media(*images)
+        LOG.debug("Media ids for uploaded images: {}".format(media_ids))
+        api.send_with_media(TXT, media_ids)
 
         LOG.info("Sleeping for {} seconds.".format(DELAY))
         time.sleep(DELAY)
