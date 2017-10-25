@@ -13,7 +13,7 @@ setup(author="Andrew Michaud",
           "console_scripts": ["goties__bot = goties_bot.__main__:main"]
       },
 
-      install_requires=["bot_skeleton>=1.0.3", "tweepy>=3.5"],
+      install_requires=["bot_skeleton>=1.0.4"],
 
       license="BSD3",
 
