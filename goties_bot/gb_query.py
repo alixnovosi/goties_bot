@@ -33,7 +33,7 @@ with open("API_KEY", "r") as f:
 def year_filter_from_year(year):
     """Generate a filter for year based on a year."""
     filter_field = "original_release_date"
-    filter_string = "{}:{}-1-1 00:00:00|{}-1-1 00:00:00".format(filter_field, year, year+1)
+    filter_string = "{}:{}-1-1 00:00:00|{}-12-31 23:59:59".format(filter_field, year, year)
     LOG.debug("Year filter is %s.", filter_field)
     return filter_string
 
@@ -133,29 +133,37 @@ def get_goties():
     # Render text as image.
     img = Image.new("RGB", (1200, 500), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype('Pillow/Tests/fonts/FreeMono.ttf', 40)
+    font = ImageFont.truetype("FreeMono.ttf", 40)
     draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
     img.save(GOTIES_FILENAME)
 
-    # Save image of first game.
-    img_dict = goties[0]["image"]
+    # Save image of first game we can find an image for.
+    # TODO do top 3 or something
+    url = None
+    for i, goty in enumerate(goties):
+        img_dict = goty["image"]
 
-    # TODO figure out which of these is actually guaranteed instead of just guessing + if/elseing.
-    if "medium_url" in img_dict:
-        url = img_dict["medium_url"]
-    LOG.info("Cover art for #1 GOTY: {}".format(url))
+        # TODO figure out which of these is actually guaranteed instead of just guessing + if/elseing.
+        if img_dict is None:
+            continue
 
-    r = requests.get(url, headers=HEADERS, stream=True)
+        if "medium_url" in img_dict:
+            url = img_dict["medium_url"]
+            break
+        LOG.info("Cover art for #{} GOTY: {}".format(i, url))
 
-    chunks = r.iter_content(chunk_size=1024)
+    if url is not None:
+        r = requests.get(url, headers=HEADERS, stream=True)
 
-    open(GOTY_FILENAME, "a", encoding="UTF-8").close()
-    with open(GOTY_FILENAME, "wb") as stream:
-        for chunk in chunks:
-            if not chunk:
-                return
-            stream.write(chunk)
-            stream.flush()
+        chunks = r.iter_content(chunk_size=1024)
+
+        open(GOTY_FILENAME, "a", encoding="UTF-8").close()
+        with open(GOTY_FILENAME, "wb") as stream:
+            for chunk in chunks:
+                if not chunk:
+                    return
+                stream.write(chunk)
+                stream.flush()
 
     LOG.info("Your goties are: \n%s", out)
     return (year, out)
