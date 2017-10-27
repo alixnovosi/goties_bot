@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
         images = [gb_query.GOTY_FILENAME, gb_query.GOTIES_FILENAME]
         media_ids = api.upload_media(*images)
-        LOG.debug("Media ids for uploaded images: {media_ids}")
+        LOG.debug(f"Media ids for uploaded images: {media_ids}")
         api.send_with_media(TXT, media_ids)
 
         LOG.info(f"Sleeping for {DELAY} seconds.")

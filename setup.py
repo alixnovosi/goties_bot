@@ -1,3 +1,5 @@
+"""Setup for goties_bot"""
+
 from os import path
 from setuptools import setup, find_packages
 
@@ -13,7 +15,7 @@ setup(author="Andrew Michaud",
           "console_scripts": ["goties__bot = goties_bot.__main__:main"]
       },
 
-      install_requires=["bot_skeleton>=1.0.4"],
+      install_requires=["botskeleton>=1.0.5", "Pillow"],
 
       license="BSD3",
 

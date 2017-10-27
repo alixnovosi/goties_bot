@@ -2,23 +2,24 @@
 import logging
 import os
 import random
+from datetime import datetime
 from enum import Enum
 
+import botskeleton
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-import util
-
 HERE = os.path.abspath(os.path.dirname(__file__))
+SECRETS_DIR = os.path.join(HERE, "SECRETS")
+
 LOG = logging.getLogger("root")
 
 GB_BASE_URL = "http://www.giantbomb.com/api/"
-GB_GAMES_URL = GB_BASE_URL + "games/?format=json"
+GB_GAMES_URL = f"{GB_BASE_URL}games/?format=json"
 
 # Being a good citizen - produce a useful user_agent.
 OWNER_URL = "https://github.com/andrewmichaud/goties_bot"
-USER_AGENT = "goties_twitterbot/1.0 (" + OWNER_URL + ") " + \
-             "(bots+goties@mail.andrewmichaud.com)"
+USER_AGENT = f"goties_twitterbot/1.0 ({OWNER_URL}) (bots+goties@mail.andrewmichaud.com)"
 HEADERS = {"User-Agent": USER_AGENT}
 
 NUMBER_GOTIES = 10
@@ -26,26 +27,21 @@ NUMBER_GOTIES = 10
 GOTY_FILENAME = "goty.png"
 GOTIES_FILENAME = "goties.png"
 
-with open("API_KEY", "r") as f:
+with open(os.path.join(SECRETS_DIR, "API_KEY"), "r") as f:
     API_KEY = f.read().strip()
 
 
 def year_filter_from_year(year):
     """Generate a filter for year based on a year."""
     filter_field = "original_release_date"
-    filter_string = "{}:{}-1-1 00:00:00|{}-12-31 23:59:59".format(filter_field, year, year)
-    LOG.debug("Year filter is %s.", filter_field)
+    filter_string = f"{filter_field}:{year}-1-1 00:00:00|{year}-12-31 23:59:59"
+    LOG.debug(f"Year filter is {filter_field}.")
     return filter_string
-
 
 def get_query_uri(search_filter, sort_field=None, limit=1, offset=0):
     """Get query URI for games."""
-    return GB_GAMES_URL + "&api_key={}&filter={}&sort={}&limit={}&offset={}".format(API_KEY,
-                                                                                    search_filter,
-                                                                                    sort_field,
-                                                                                    limit,
-                                                                                    offset)
-
+    return f"{GB_GAMES_URL}&api_key={API_KEY}" +\
+            f"&filter={search_filter}&sort={sort_field}&limit={limit}&offset={offset}"
 
 def get_count(year_filter):
     """Return number of games known to the GB API in a given year."""
@@ -58,9 +54,9 @@ def get_count(year_filter):
 
 def get_random_game(year_filter, year_count):
     """Get a game from the GB API."""
-    LOG.info("Year count is %s.", year_count)
+    LOG.info(f"Year count is {year_count}.")
     offset = random.choice(range(year_count))
-    LOG.info("Choosing offset %s.", offset)
+    LOG.info(f"Choosing offset {offset}.")
 
     query_uri = get_query_uri(search_filter=year_filter, limit=1, offset=offset)
 
@@ -70,13 +66,14 @@ def get_random_game(year_filter, year_count):
     try:
         return random.choice(resp["results"])
     except IndexError as e:
-        LOG.error("Got index error: %s", e)
+        LOG.error(f"Got index error: {e}")
         return [{"name": "Video Games"}]
 
 
 def get_goties():
     """Get games of the year (10 of them)."""
-    year = random.choice(range(1980, 2017))
+    current_year = datetime.today().year
+    year = random.choice(range(1980, current_year+1))
     year_filter = year_filter_from_year(year)
     year_count = get_count(year_filter)
 
@@ -86,37 +83,38 @@ def get_goties():
         order = "asc"
     else:
         order = "desc"
-    LOG.info("Chose order %s", order)
+    LOG.info(f"Chose order {order}.")
 
     # SECRET DON'T LOOK!
     method = random.choice(list(PickMethods))
     if method == PickMethods.chronological:
         LOG.info("Choosing chronologically.")
         goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field="original_release_date:" + order,
+                                   sort_field=f"original_release_date: {order}",
                                    year_count=year_count)
 
     elif method == PickMethods.added:
         LOG.info("Choosing by added date.")
         goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field="date_added:" + order, year_count=year_count)
+                                   sort_field=f"date_added: {order}",
+                                   year_count=year_count)
 
     elif method == PickMethods.last_updated:
         LOG.info("Choosing by last updated date.")
         goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field="date_last_updated:" + order,
+                                   sort_field=f"date_last_updated: {order}",
                                    year_count=year_count)
 
     elif method == PickMethods.num_user_reviews:
         LOG.info("Choosing by number of user reviews.")
         goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field="number_of_user_reviews:" + order,
+                                   sort_field=f"number_of_user_reviews: {order}",
                                    year_count=year_count)
 
     elif method == PickMethods.gb_id:
         LOG.info("Choosing by GB id.")
         goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field="id:" + order,
+                                   sort_field=f"id: {order}",
                                    year_count=year_count)
     elif method == PickMethods.random:
         LOG.info("Choosing at random.")
@@ -125,15 +123,15 @@ def get_goties():
             goty = get_random_game(year_filter, year_count)
             goties.append(goty)
 
-    out = "Game of the Year List for {}\n".format(year)
+    out = f"Game of the Year List for {year}\n"
     for i in range(NUMBER_GOTIES):
         name = goties[i]["name"]
-        out += "{}. {}\n".format(i+1, name)
+        out += f"{i+1}. {name}\n"
 
     # Render text as image.
     img = Image.new("RGB", (1200, 500), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype("FreeMono.ttf", 40)
+    font = ImageFont.truetype(os.path.join(HERE, "FreeMono.ttf"), 40)
     draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
     img.save(GOTIES_FILENAME)
 
@@ -150,7 +148,7 @@ def get_goties():
         if "medium_url" in img_dict:
             url = img_dict["medium_url"]
             break
-        LOG.info("Cover art for #{} GOTY: {}".format(i, url))
+        LOG.info(f"Cover art for #{i} GOTY: {url}")
 
     if url is not None:
         r = requests.get(url, headers=HEADERS, stream=True)
@@ -165,7 +163,7 @@ def get_goties():
                 stream.write(chunk)
                 stream.flush()
 
-    LOG.info("Your goties are: \n%s", out)
+    LOG.info(f"Your goties are: \n{out}")
     return (year, out)
 
 
@@ -180,13 +178,13 @@ def handle_offset_get(year_filter, sort_field, year_count):
     return resp["results"]
 
 
-@util.rate_limited(200)
+@botskeleton.rate_limited(200)
 def perform_gb_query(query_uri):
     """Hit GB API. Perform rate limiting."""
-    LOG.info("Query URI is %s.", query_uri)
+    LOG.info(f"Query URI is {query_uri}.")
     resp = requests.get(query_uri, headers=HEADERS)
     print(resp.status_code)
-    LOG.debug("Full response is: \n %s", resp.text)
+    LOG.debug(f"Full response is: \n {resp.text}")
     return resp.json()
 
 
