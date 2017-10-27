@@ -1,16 +1,18 @@
 """Stuff related to interfacing with Giant Bomb API."""
+
 import logging
-import os
+import pkg_resources
 import random
 from datetime import datetime
 from enum import Enum
+from os import path
 
 import botskeleton
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-HERE = os.path.abspath(os.path.dirname(__file__))
-SECRETS_DIR = os.path.join(HERE, "SECRETS")
+HERE = path.abspath(path.dirname(__file__))
+SECRETS_DIR = path.join(HERE, "SECRETS")
 
 LOG = logging.getLogger("root")
 
@@ -18,8 +20,13 @@ GB_BASE_URL = "http://www.giantbomb.com/api/"
 GB_GAMES_URL = f"{GB_BASE_URL}games/?format=json"
 
 # Being a good citizen - produce a useful user_agent.
+OWNER_EMAIL = "bots+goties@mail.andrewmichaud.com"
 OWNER_URL = "https://github.com/andrewmichaud/goties_bot"
-USER_AGENT = f"goties_twitterbot/1.0 ({OWNER_URL}) (bots+goties@mail.andrewmichaud.com)"
+
+with open(path.join(path.join(HERE, ".."), "VERSION")) as f:
+    VERSION = f.read().strip()
+
+USER_AGENT = f"goties_twitterbot/{VERSION} ({OWNER_URL}) ({OWNER_EMAIL})"
 HEADERS = {"User-Agent": USER_AGENT}
 
 NUMBER_GOTIES = 10
@@ -27,15 +34,14 @@ NUMBER_GOTIES = 10
 GOTY_FILENAME = "goty.png"
 GOTIES_FILENAME = "goties.png"
 
-with open(os.path.join(SECRETS_DIR, "API_KEY"), "r") as f:
+with open(path.join(SECRETS_DIR, "API_KEY"), "r") as f:
     API_KEY = f.read().strip()
-
 
 def year_filter_from_year(year):
     """Generate a filter for year based on a year."""
     filter_field = "original_release_date"
     filter_string = f"{filter_field}:{year}-1-1 00:00:00|{year}-12-31 23:59:59"
-    LOG.debug(f"Year filter is {filter_field}.")
+    LOG.debug(f"Year filter is {filter_string}.")
     return filter_string
 
 def get_query_uri(search_filter, sort_field=None, limit=1, offset=0):
@@ -50,7 +56,6 @@ def get_count(year_filter):
     resp = perform_gb_query(query_uri)
     print(resp)
     return resp["number_of_total_results"]
-
 
 def get_random_game(year_filter, year_count):
     """Get a game from the GB API."""
@@ -68,7 +73,6 @@ def get_random_game(year_filter, year_count):
     except IndexError as e:
         LOG.error(f"Got index error: {e}")
         return [{"name": "Video Games"}]
-
 
 def get_goties():
     """Get games of the year (10 of them)."""
@@ -116,6 +120,7 @@ def get_goties():
         goties = handle_offset_get(year_filter=year_filter,
                                    sort_field=f"id: {order}",
                                    year_count=year_count)
+
     elif method == PickMethods.random:
         LOG.info("Choosing at random.")
         goties = []
@@ -131,7 +136,7 @@ def get_goties():
     # Render text as image.
     img = Image.new("RGB", (1200, 500), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(os.path.join(HERE, "FreeMono.ttf"), 40)
+    font = ImageFont.truetype(path.join(HERE, "FreeMono.ttf"), 40)
     draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
     img.save(GOTIES_FILENAME)
 
@@ -166,7 +171,6 @@ def get_goties():
     LOG.info(f"Your goties are: \n{out}")
     return (year, out)
 
-
 def handle_offset_get(year_filter, sort_field, year_count):
     """Handle indexing at a random offset into GB API results to get games."""
     offset = random.choice(range(0, year_count-NUMBER_GOTIES))
@@ -177,7 +181,6 @@ def handle_offset_get(year_filter, sort_field, year_count):
     resp = perform_gb_query(query_uri)
     return resp["results"]
 
-
 @botskeleton.rate_limited(200)
 def perform_gb_query(query_uri):
     """Hit GB API. Perform rate limiting."""
@@ -186,7 +189,6 @@ def perform_gb_query(query_uri):
     print(resp.status_code)
     LOG.debug(f"Full response is: \n {resp.text}")
     return resp.json()
-
 
 # SECRET DON'T LOOK!
 class PickMethods(Enum):
