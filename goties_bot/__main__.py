@@ -1,6 +1,5 @@
 """Main class for bot."""
 
-import time
 from os import path
 
 import botskeleton
@@ -11,9 +10,8 @@ import gb_query
 DELAY = 7200
 
 if __name__ == "__main__":
-
-    SECRETS_DIR = path.join(path.abspath(path.dirname(__file__)), "SECRETS")
-    BOT_SKELETON = botskeleton.BotSkeleton(SECRETS_DIR, bot_name="goties_bot")
+    SECRETS_DIR = path.join(gb_query.HERE, "SECRETS")
+    BOT_SKELETON = botskeleton.BotSkeleton(SECRETS_DIR, bot_name="goties_bot", delay=DELAY)
 
     LOG = botskeleton.set_up_logging()
 
@@ -22,12 +20,9 @@ if __name__ == "__main__":
         (year, _) = gb_query.get_goties()
 
         LOG.info(f"Sending out goties for {year}.")
-        TXT = f"The Games of the Year for {year} are:"
+        TWEET = f"The Games of the Year for {year} are:"
 
         images = [gb_query.GOTY_FILENAME, gb_query.GOTIES_FILENAME]
         media_ids = BOT_SKELETON.upload_media(*images)
         LOG.debug(f"Media ids for uploaded images: {media_ids}")
-        BOT_SKELETON.send_with_media(TXT, media_ids)
-
-        LOG.info(f"Sleeping for {DELAY} seconds.")
-        time.sleep(DELAY)
+        BOT_SKELETON.send_with_media(TWEET, media_ids)

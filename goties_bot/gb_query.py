@@ -1,7 +1,6 @@
 """Stuff related to interfacing with Giant Bomb API."""
 
 import logging
-import pkg_resources
 import random
 from datetime import datetime
 from enum import Enum
@@ -11,13 +10,11 @@ import botskeleton
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
+# Path stuff and logging.
 HERE = path.abspath(path.dirname(__file__))
 SECRETS_DIR = path.join(HERE, "SECRETS")
 
 LOG = logging.getLogger("root")
-
-GB_BASE_URL = "http://www.giantbomb.com/api/"
-GB_GAMES_URL = f"{GB_BASE_URL}games/?format=json"
 
 # Being a good citizen - produce a useful user_agent.
 OWNER_EMAIL = "bots+goties@mail.andrewmichaud.com"
@@ -29,6 +26,11 @@ with open(path.join(path.join(HERE, ".."), "VERSION")) as f:
 USER_AGENT = f"goties_twitterbot/{VERSION} ({OWNER_URL}) ({OWNER_EMAIL})"
 HEADERS = {"User-Agent": USER_AGENT}
 
+# GB info.
+GB_BASE_URL = "http://www.giantbomb.com/api/"
+GB_GAMES_URL = f"{GB_BASE_URL}games/?format=json"
+
+# Bot config/housekeeping.
 NUMBER_GOTIES = 10
 
 GOTY_FILENAME = "goty.png"
@@ -54,7 +56,6 @@ def get_count(year_filter):
     query_uri = get_query_uri(search_filter=year_filter)
 
     resp = perform_gb_query(query_uri)
-    print(resp)
     return resp["number_of_total_results"]
 
 def get_random_game(year_filter, year_count):
