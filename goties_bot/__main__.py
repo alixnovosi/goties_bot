@@ -26,3 +26,5 @@ if __name__ == "__main__":
         media_ids = BOT_SKELETON.upload_media(*images)
         LOG.debug(f"Media ids for uploaded images: {media_ids}")
         BOT_SKELETON.send_with_media(TWEET, media_ids)
+
+        BOT_SKELETON.nap()
