@@ -33,52 +33,85 @@ GB_GAMES_URL = f"{GB_BASE_URL}games/?format=json"
 # Bot config/housekeeping.
 NUMBER_GOTIES = 10
 
-GOTY_FILENAME = "goty.png"
+TOP_THREE_FILENAMES = ["goty_1.png", "goty_2.png", "goty_3.png"]
 GOTIES_FILENAME = "goties.png"
+YEAR_END_SPECIAL_FILENAME = path.join(SECRETS_DIR, "YEAR_END_SPECIAL")
 
 with open(path.join(SECRETS_DIR, "API_KEY"), "r") as f:
     API_KEY = f.read().strip()
 
-def year_filter_from_year(year):
-    """Generate a filter for year based on a year."""
-    filter_field = "original_release_date"
-    filter_string = f"{filter_field}:{year}-1-1 00:00:00|{year}-12-31 23:59:59"
-    LOG.debug(f"Year filter is {filter_string}.")
-    return filter_string
-
-def get_query_uri(search_filter, sort_field=None, limit=1, offset=0):
-    """Get query URI for games."""
-    return f"{GB_GAMES_URL}&api_key={API_KEY}" +\
-            f"&filter={search_filter}&sort={sort_field}&limit={limit}&offset={offset}"
-
-def get_count(year_filter):
-    """Return number of games known to the GB API in a given year."""
-    query_uri = get_query_uri(search_filter=year_filter)
-
-    resp = perform_gb_query(query_uri)
-    return resp["number_of_total_results"]
-
-def get_random_game(year_filter, year_count):
-    """Get a game from the GB API."""
-    LOG.info(f"Year count is {year_count}.")
-    offset = random.choice(range(year_count))
-    LOG.info(f"Choosing offset {offset}.")
-
-    query_uri = get_query_uri(search_filter=year_filter, limit=1, offset=offset)
-
-    resp = perform_gb_query(query_uri)
-
-    # TODO handle better
-    try:
-        return random.choice(resp["results"])
-    except IndexError as e:
-        LOG.error(f"Got index error: {e}")
-        return [{"name": "Video Games"}]
-
 def get_goties():
+    """Get goties (or year-end goties)."""
+    if datetime.now().month >= 11:
+        return get_goties_year_end_special()
+    else:
+        return get_gometies_regular()
+
+def get_goties_year_end_special():
+    all_games = []
+    with open(YEAR_END_SPECIAL_FILENAME) as f:
+        for i, line in enumerate(f):
+            if i == 0:
+                year = int(line)
+            else:
+                all_games.append(line.strip())
+
+    LOG.info("Loaded games for YEAR END SPECIAL.")
+
+    # Pick ten games randomly from the list.
+    games = random.sample(all_games, NUMBER_GOTIES)
+    print(len(games))
+
+    LOG.info(f"Chose winners!")
+
+    processed = {}
+    goties = []
+    for i, game_name in enumerate(games):
+        # Just need to process the top three games right now, so make life easy for us and the API.
+        if i < 3:
+            # Don't query GB API multiple times if we have duplicates in the list for whatever reason.
+            if game_name in processed.keys():
+                LOG.info(f"Skipping going to GB for '{game_name}', we have it already.")
+                goties.append(processed[game_name])
+            else:
+                LOG.info(f"Looking up '{game_name}' by name, year filter.")
+                name_filter = name_filter_from_name(game_name)
+                year_filter = year_filter_from_year(year)
+                goty = get_named_game(f"{name_filter},{year_filter}")
+
+                if goty == {}:
+                    # Try again with year extended a bit. Maybe game got a meaningful re-release.
+                    LOG.info(f"Trying to find '{game_name}' with longer year range.")
+                    year_filter = year_filter_from_year(year-2)
+                    goty = get_named_game(f"{name_filter},{year_filter}")
+
+                if goty == {}:
+                    LOG.info(f"Giving up and faking '{game_name}' because we can't find it.")
+                    name_filter = name_filter_from_name("Team Fortress 2")
+                    year_filter = year_filter_from_year(2007)
+                    goty = get_named_game(f"{name_filter},{year_filter}")
+
+                # Ensure that names will be right even if query wasn't good enough and we got the
+                # wrong game and therefore art.
+                goty["name"] = game_name
+                processed[game_name] = goty
+                goties.append(goty)
+
+        else:
+            LOG.info(f"Skipping going to GB for '{game_name}', it's not top 3.")
+            goties.append({"name": game_name})
+
+    out = render_and_save_images(year, goties)
+
+    LOG.info(f"Your goties are: \n{out}")
+    return (year, out)
+
+def get_goties_regular():
     """Get games of the year (10 of them)."""
     current_year = datetime.today().year
-    year = random.choice(range(1980, current_year+1))
+
+    # Trying out different distributions
+    year = int(random.triangular(1985, current_year, 2005))
     year_filter = year_filter_from_year(year)
     year_count = get_count(year_filter)
 
@@ -129,48 +162,100 @@ def get_goties():
             goty = get_random_game(year_filter, year_count)
             goties.append(goty)
 
-    out = f"Game of the Year List for {year}\n"
-    for i in range(NUMBER_GOTIES):
-        name = goties[i]["name"]
-        out += f"{i+1}. {name}\n"
-
-    # Render text as image.
-    img = Image.new("RGB", (1200, 500), (255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(path.join(HERE, "FreeMono.ttf"), 40)
-    draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
-    img.save(GOTIES_FILENAME)
-
-    # Save image of first game we can find an image for.
-    # TODO do top 3 or something
-    url = None
-    for i, goty in enumerate(goties):
-        img_dict = goty["image"]
-
-        # TODO figure out which of these is actually guaranteed instead of just guessing + if/elseing.
-        if img_dict is None:
-            continue
-
-        if "medium_url" in img_dict:
-            url = img_dict["medium_url"]
-            break
-        LOG.info(f"Cover art for #{i} GOTY: {url}")
-
-    if url is not None:
-        r = requests.get(url, headers=HEADERS, stream=True)
-
-        chunks = r.iter_content(chunk_size=1024)
-
-        open(GOTY_FILENAME, "a", encoding="UTF-8").close()
-        with open(GOTY_FILENAME, "wb") as stream:
-            for chunk in chunks:
-                if not chunk:
-                    return
-                stream.write(chunk)
-                stream.flush()
+    out = render_and_save_images(year, goties)
 
     LOG.info(f"Your goties are: \n{out}")
     return (year, out)
+
+def render_and_save_images(year, goties):
+    """Render images and output tweet text."""
+    out = f"Game of the Year List for {year}\n"
+    for i, goty in enumerate(goties):
+        num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
+        out += f"{num}. {goty['name']}\n"
+
+    font = ImageFont.truetype(path.join(HERE, "FreeMono.ttf"), 40)
+
+    save_goties(year, out, font)
+    save_game_images(goties)
+
+    return out
+
+def save_game_images(goties):
+    """Save game images to files."""
+    for i, goty in enumerate(goties[:3]):
+        img_dict = goty["image"]
+
+        if img_dict is not None:
+
+            for item in ["original_url", "super_url", "medium_url", "small_url", "thumb_url",
+                         "tiny_url"]:
+                if item in img_dict:
+                    url = img_dict[item]
+                    break
+
+            LOG.info(f"Cover art for #{i} GOTY: {url}")
+
+        # Ensure exists and then clear.
+        filename = TOP_THREE_FILENAMES[i]
+        open(filename, "a", encoding="UTF-8").close()
+        open(filename, "w", encoding="UTF-8").close()
+        if url is not None:
+            r = requests.get(url, headers=HEADERS, stream=True)
+
+            chunks = r.iter_content(chunk_size=1024)
+            with open(filename, "wb") as stream:
+                for chunk in chunks:
+                    if not chunk:
+                        return
+                    stream.write(chunk)
+                    stream.flush()
+
+def save_goties(year, out, font):
+    """Save Goties to an image file."""
+    img = Image.new("RGB", (1200, 500), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
+    img.save(GOTIES_FILENAME)
+
+def get_named_game(filter):
+    """Get specific (hopefully) game from GB API."""
+    query_uri = get_query_uri(search_filter=filter, limit=1, offset=0)
+    return query_for_goty(query_uri, always_return_something=False)
+
+def get_random_game(year_filter, year_count):
+    """Get a game from the GB API."""
+    LOG.info(f"Year count is {year_count}.")
+    offset = random.choice(range(year_count))
+    LOG.info(f"Choosing offset {offset}.")
+
+    query_uri = get_query_uri(search_filter=year_filter, limit=1, offset=offset)
+    return query_for_goty(query_uri)
+
+def query_for_goty(query_uri, always_return_something=True):
+    """Perform query, get GOTY."""
+    resp = perform_gb_query(query_uri)
+
+    if len(resp["results"]) == 0 and always_return_something:
+        return {"name": "Video Games"}
+    elif len(resp["results"]) == 0:
+        return {}
+    else:
+        return random.choice(resp["results"])
+
+def name_filter_from_name(name):
+    """Get name filter from name, optional year extension."""
+    filter_field = "name"
+    filter_string = f"{filter_field}:{name}"
+    LOG.debug(f"Name filter is {filter_string}.")
+    return filter_string
+
+def year_filter_from_year(year):
+    """Generate a filter for year based on a year."""
+    filter_field = "original_release_date"
+    filter_string = f"{filter_field}:{year}-1-1 00:00:00|{year}-12-31 23:59:59"
+    LOG.debug(f"Year filter is {filter_string}.")
+    return filter_string
 
 def handle_offset_get(year_filter, sort_field, year_count):
     """Handle indexing at a random offset into GB API results to get games."""
@@ -181,6 +266,18 @@ def handle_offset_get(year_filter, sort_field, year_count):
                               offset=offset)
     resp = perform_gb_query(query_uri)
     return resp["results"]
+
+def get_query_uri(search_filter, sort_field=None, limit=1, offset=0):
+    """Get query URI for games."""
+    return f"{GB_GAMES_URL}&api_key={API_KEY}" +\
+            f"&filter={search_filter}&sort={sort_field}&limit={limit}&offset={offset}"
+
+def get_count(year_filter):
+    """Return number of games known to the GB API in a given year."""
+    query_uri = get_query_uri(search_filter=year_filter)
+
+    resp = perform_gb_query(query_uri)
+    return resp["number_of_total_results"]
 
 @botskeleton.rate_limited(200)
 def perform_gb_query(query_uri):
