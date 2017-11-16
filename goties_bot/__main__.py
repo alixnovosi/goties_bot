@@ -7,7 +7,7 @@ import botskeleton
 import gb_query
 
 # Delay between tweets in seconds.
-DELAY = 7200
+DELAY = 7200 * 2
 
 if __name__ == "__main__":
     SECRETS_DIR = path.join(gb_query.HERE, "SECRETS")
