@@ -165,7 +165,7 @@ def render_and_save_images(year, goties):
         num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
         out += f"{num}. {goty['name']}\n"
 
-    font = ImageFont.truetype(path.join(HERE, "FreeMono.ttf"), 40)
+    font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
 
     save_goties(year, out, font)
     save_game_images(goties)
