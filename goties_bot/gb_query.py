@@ -35,7 +35,7 @@ GB_GAME_URL = f"{GB_BASE_URL}game/"
 # Bot config/housekeeping.
 NUMBER_GOTIES = 10
 
-TOP_THREE_FILENAMES = ["goty_1.png", "goty_2.png", "goty_3.png"]
+TOP_THREE_FILENAMES = [None, None, None]
 GOTIES_FILENAME = "goties.png"
 YEAR_END_SPECIAL_FILENAME = path.join(SECRETS_DIR, "YEAR_END_SPECIAL.yaml")
 
@@ -187,15 +187,18 @@ def save_game_images(goties):
 
             LOG.info(f"Cover art for #{i} GOTY: {url}")
 
-        # Ensure exists and then clear.
-        filename = TOP_THREE_FILENAMES[i]
-        open(filename, "a", encoding="UTF-8").close()
-        open(filename, "w", encoding="UTF-8").close()
         if url is not None:
             r = requests.get(url, headers=HEADERS, stream=True)
 
+            # We can get jpg or png from the API, so handle that correctly.
+            contentType = r.headers["content-type"]
+            if contentType == "image/png":
+                TOP_THREE_FILENAMES[i] = f"test{i}.png"
+            else:
+                TOP_THREE_FILENAMES[i] = f"test{i}.jpg"
+
             chunks = r.iter_content(chunk_size=1024)
-            with open(filename, "wb") as stream:
+            with open(TOP_THREE_FILENAMES[i], "wb") as stream:
                 for chunk in chunks:
                     if not chunk:
                         return
