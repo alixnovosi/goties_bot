@@ -12,8 +12,7 @@ DELAY = 7200 * 2
 if __name__ == "__main__":
     SECRETS_DIR = path.join(gb_query.HERE, "SECRETS")
     BOT_SKELETON = botskeleton.BotSkeleton(SECRETS_DIR, bot_name="goties_bot", delay=DELAY)
-
-    LOG = botskeleton.set_up_logging()
+    LOG = BOT_SKELETON.log
 
     while True:
         LOG.info("Determining goties.")
