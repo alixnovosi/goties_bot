@@ -47,7 +47,7 @@ def get_goties():
     if datetime.now().month >= 11:
         return get_goties_year_end_special()
     else:
-        return get_gometies_regular()
+        return get_goties_regular()
 
 def get_goties_year_end_special():
     with open(YEAR_END_SPECIAL_FILENAME, "r") as f:
