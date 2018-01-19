@@ -17,6 +17,8 @@ SECRETS_DIR = path.join(HERE, "SECRETS")
 
 LOG = logging.getLogger("root")
 
+MAX_IMAGE_SIZE_BYTES = 3072 * 1024
+
 # Being a good citizen - produce a useful user_agent.
 OWNER_EMAIL = "bots+goties@mail.andrewmichaud.com"
 OWNER_URL = "https://github.com/andrewmichaud/goties_bot"
@@ -204,6 +206,15 @@ def save_game_images(goties):
                         return
                     stream.write(chunk)
                     stream.flush()
+
+            LOG.info(f"Check size of file (must be <{MAX_IMAGE_SIZE_BYTES} to send)")
+            file_size = path.getsize(TOP_THREE_FILENAMES[i])
+            LOG.info(f"Size of {TOP_THREE_FILENAMES[i]} is {file_size}")
+            if file_size >= MAX_IMAGE_SIZE_BYTES:
+                LOG.info("Too big, shrinking.")
+                im = Image.open(TOP_THREE_FILENAMES[i])
+                im.resize((im.width//2, im.height//2), Image.ANTIALIAS)
+                im.save(TOP_THREE_FILENAMES[i])
 
 def save_goties(year, out, font):
     """Save Goties to an image file."""
