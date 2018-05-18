@@ -14,7 +14,7 @@ setup(author="Andrew Michaud",
 
       entry_points={"console_scripts": ["goties__bot = goties_bot.__main__:main"]},
 
-      install_requires=["botskeleton>=2.0.4", "Pillow", "pyyaml>=3.12"],
+      install_requires=["botskeleton>=2.0.5", "Pillow", "pyyaml>=3.12"],
       python_requires=">=3.6",
 
       license="BSD3",
