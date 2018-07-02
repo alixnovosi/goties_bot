@@ -213,7 +213,7 @@ def save_game_images(goties):
             if file_size >= MAX_IMAGE_SIZE_BYTES:
                 LOG.info("Too big, shrinking.")
                 im = Image.open(TOP_THREE_FILENAMES[i])
-                im.resize((im.width//2, im.height//2), Image.ANTIALIAS)
+                im = im.resize((im.width//2, im.height//2), Image.ANTIALIAS)
                 im.save(TOP_THREE_FILENAMES[i])
 
 def save_goties(year, out, font):
