@@ -21,7 +21,7 @@ MAX_IMAGE_SIZE_BYTES = 3072 * 1024
 
 # Being a good citizen - produce a useful user_agent.
 OWNER_EMAIL = "bots+goties@mail.andrewmichaud.com"
-OWNER_URL = "https://github.com/andrewmichaud/goties_bot"
+OWNER_URL = "https://github.com/alixnovosi/goties_bot"
 
 with open(path.join(path.join(HERE, ".."), "VERSION")) as f:
     VERSION = f.read().strip()

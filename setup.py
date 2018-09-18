@@ -10,7 +10,7 @@ with open(path.join(HERE, "VERSION"), encoding="utf-8") as f:
 
 setup(author="Andrew Michaud",
       author_email="bots+goties@mail.andrewmichaud.com",
-      url="https://github.com/andrewmichaud/goties_bot",
+      url="https://github.com/alixnovosi/goties_bot",
 
       entry_points={"console_scripts": ["goties__bot = goties_bot.__main__:main"]},
 
