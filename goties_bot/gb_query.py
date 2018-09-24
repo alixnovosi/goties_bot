@@ -93,18 +93,7 @@ def get_goties_year_end_special():
             LOG.info(f"Skipping going to GB for '{game_name}', it's not top 3.")
             goties.append({"name": game_name})
 
-    caption_out = render_and_save_images(year, goties)
-
-    LOG.info(f"Your goties are: \n{out}")
-    return {
-        "year": year,
-        "captions": [
-            goties[0].get("name", "No name found."),
-            goties[1].get("name", "No name found."),
-            goties[2].get("name", "No name found."),
-            caption_out,
-        ],
-    }
+    return render_and_save_images(year, goties)
 
 def get_goties_regular():
     """Get games of the year (10 of them)."""
@@ -162,18 +151,7 @@ def get_goties_regular():
             goty = get_random_game(year_filter, year_count)
             goties.append(goty)
 
-    caption_out = render_and_save_images(year, goties)
-
-    LOG.info(f"Your goties are: \n{out}")
-    return {
-        "year": year,
-        "captions": [
-            1: goties[0].get("name", "No name found."),
-            2: goties[1].get("name", "No name found."),
-            3: goties[2].get("name", "No name found."),
-            "all": caption_out,
-        ],
-    }
+    return render_and_save_images(year, goties)
 
 
 def render_and_save_images(year, goties):
@@ -192,7 +170,16 @@ def render_and_save_images(year, goties):
     save_goties(year, full_out, font)
     save_game_images(goties)
 
-    return caption_out
+    LOG.info(f"Your goties are: \n{full_out}")
+    return {
+        "year": year,
+        "captions": [
+            goties[0].get("name", "No name found."),
+            goties[1].get("name", "No name found."),
+            goties[2].get("name", "No name found."),
+            caption_out,
+        ],
+    }
 
 def save_game_images(goties):
     """Save game images to files."""
