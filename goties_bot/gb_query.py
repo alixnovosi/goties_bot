@@ -156,7 +156,7 @@ def get_goties_regular():
 
 def render_and_save_images(year, goties):
     """Render images and output tweet text."""
-    caption_out = f"GOTYies {year}"
+    caption_out = f"GOTYies for {year}\n"
     full_out = f"Game of the Year List for {year}\n"
     for i, goty in enumerate(goties):
         num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
