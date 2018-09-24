@@ -156,14 +156,14 @@ def get_goties_regular():
 
 def render_and_save_images(year, goties):
     """Render images and output tweet text."""
-    caption_out = ""
+    caption_out = f"GOTYies {year}"
     full_out = f"Game of the Year List for {year}\n"
     for i, goty in enumerate(goties):
         num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
         full_out += f"{num}. {goty['name']}\n"
 
         # I don't like this, but I want to guarantee we fit the caption limit.
-        caption_out += f"{num}. {goty['name']}\n"[:33]
+        caption_out += f"{num}. {goty['name']}"[:32] + "\n"
 
     font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
 
@@ -177,7 +177,7 @@ def render_and_save_images(year, goties):
             goties[0].get("name", "No name found."),
             goties[1].get("name", "No name found."),
             goties[2].get("name", "No name found."),
-            caption_out,
+            caption_out[:420], # nice
         ],
     }
 
