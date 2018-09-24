@@ -27,7 +27,7 @@ if __name__ == "__main__":
                                           gb_query.TOP_THREE_FILENAMES[1],
                                           gb_query.TOP_THREE_FILENAMES[2],
                                           gb_query.GOTIES_FILENAME,
-                                          res["captions"],
+                                          captions=res["captions"],
                                           )
 
         BOT_SKELETON.nap()
