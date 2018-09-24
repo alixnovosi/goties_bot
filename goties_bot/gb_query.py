@@ -64,7 +64,6 @@ def get_goties_year_end_special():
 
     # Pick ten games randomly from the list.
     games = random.sample(all_games, NUMBER_GOTIES)
-    print(len(games))
 
     LOG.info(f"Chose winners!")
 
@@ -94,10 +93,18 @@ def get_goties_year_end_special():
             LOG.info(f"Skipping going to GB for '{game_name}', it's not top 3.")
             goties.append({"name": game_name})
 
-    out = render_and_save_images(year, goties)
+    caption_out = render_and_save_images(year, goties)
 
     LOG.info(f"Your goties are: \n{out}")
-    return (year, out)
+    return {
+        "year": year,
+        "captions": [
+            goties[0].get("name", "No name found."),
+            goties[1].get("name", "No name found."),
+            goties[2].get("name", "No name found."),
+            caption_out,
+        ],
+    }
 
 def get_goties_regular():
     """Get games of the year (10 of them)."""
@@ -155,24 +162,37 @@ def get_goties_regular():
             goty = get_random_game(year_filter, year_count)
             goties.append(goty)
 
-    out = render_and_save_images(year, goties)
+    caption_out = render_and_save_images(year, goties)
 
     LOG.info(f"Your goties are: \n{out}")
-    return (year, out)
+    return {
+        "year": year,
+        "captions": [
+            1: goties[0].get("name", "No name found."),
+            2: goties[1].get("name", "No name found."),
+            3: goties[2].get("name", "No name found."),
+            "all": caption_out,
+        ],
+    }
+
 
 def render_and_save_images(year, goties):
     """Render images and output tweet text."""
-    out = f"Game of the Year List for {year}\n"
+    caption_out = ""
+    full_out = f"Game of the Year List for {year}\n"
     for i, goty in enumerate(goties):
         num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
-        out += f"{num}. {goty['name']}\n"
+        full_out += f"{num}. {goty['name']}\n"
+
+        # I don't like this, but I want to guarantee we fit the caption limit.
+        caption_out += f"{num}. {goty['name']}\n"[:33]
 
     font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
 
-    save_goties(year, out, font)
+    save_goties(year, full_out, font)
     save_game_images(goties)
 
-    return out
+    return caption_out
 
 def save_game_images(goties):
     """Save game images to files."""
@@ -285,7 +305,6 @@ def perform_gb_query(query_uri):
     """Hit GB API. Perform rate limiting."""
     LOG.info(f"Query URI is '{query_uri}'.")
     resp = requests.get(query_uri, headers=HEADERS)
-    print(resp.status_code)
     LOG.debug(f"Full response is: \n {resp.text}")
     return resp.json()
 

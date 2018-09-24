@@ -16,14 +16,17 @@ if __name__ == "__main__":
 
     while True:
         LOG.info("Determining goties.")
-        (year, _) = gb_query.get_goties()
+        res = gb_query.get_goties()
+        year = res["year"]
 
         LOG.info(f"Sending out goties for {year}.")
         TWEET = f"The Games of the Year for {year} are:"
 
-        images = [*gb_query.TOP_THREE_FILENAMES, gb_query.GOTIES_FILENAME]
-        media_ids = BOT_SKELETON.upload_media(*images)
-        LOG.debug(f"Media ids for uploaded images: {media_ids}")
-        BOT_SKELETON.send_with_media(TWEET, media_ids)
+        images = [
+            *gb_query.TOP_THREE_FILENAMES,
+            gb_query.GOTIES_FILENAME,
+        ]
+
+        BOT_SKELETON.send_with_many_media(TWEET, *images, res["captions"])
 
         BOT_SKELETON.nap()
