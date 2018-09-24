@@ -22,11 +22,12 @@ if __name__ == "__main__":
         LOG.info(f"Sending out goties for {year}.")
         TWEET = f"The Games of the Year for {year} are:"
 
-        images = [
-            *gb_query.TOP_THREE_FILENAMES,
-            gb_query.GOTIES_FILENAME,
-        ]
-
-        BOT_SKELETON.send_with_many_media(TWEET, *images, res["captions"])
+        BOT_SKELETON.send_with_many_media(TWEET,
+                                          gb_query.TOP_THREE_FILENAMES[0],
+                                          gb_query.TOP_THREE_FILENAMES[1],
+                                          gb_query.TOP_THREE_FILENAMES[2],
+                                          gb_query.GOTIES_FILENAME,
+                                          res["captions"],
+                                          )
 
         BOT_SKELETON.nap()
