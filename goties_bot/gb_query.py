@@ -37,44 +37,45 @@ GB_GAME_URL = f"{GB_BASE_URL}game/"
 # Bot config/housekeeping.
 NUMBER_GOTIES = 10
 
-TOP_THREE_FILENAMES = [None, None, None]
-GOTIES_FILENAME = "goties.png"
 YEAR_END_SPECIAL_FILENAME = path.join(SECRETS_DIR, "YEAR_END_SPECIAL.yaml")
 
 with open(path.join(SECRETS_DIR, "API_KEY"), "r") as f:
     API_KEY = f.read().strip()
 
-def get_goties():
-    """Get goties (or year-end goties)."""
-    if datetime.now().month >= 11:
-        return get_goties_year_end_special()
-    else:
-        return get_goties_regular()
+class GOTYStore:
+    """Store GOTYies."""
+    def __init__(self):
+        self.filenames = ([None] * NUMBER_GOTIES) + ["goties.png"]
 
-def get_goties_year_end_special():
-    with open(YEAR_END_SPECIAL_FILENAME, "r") as f:
-        year_end_special_contents = yaml.safe_load(f)
+    def get_goties(self):
+        """Get goties (or year-end goties)."""
+        if datetime.now().month >= 11:
+            return self.get_goties_year_end_special()
+        else:
+            return self.get_goties_regular()
 
-    year = year_end_special_contents["year"]
-    all_games = year_end_special_contents["games"]
+    def get_goties_year_end_special(self):
+        with open(YEAR_END_SPECIAL_FILENAME, "r") as f:
+            year_end_special_contents = yaml.safe_load(f)
 
-    LOG.info(year_end_special_contents)
+        year = year_end_special_contents["year"]
+        all_games = year_end_special_contents["games"]
 
-    LOG.info("Loaded games for YEAR END SPECIAL.")
+        LOG.info(year_end_special_contents)
 
-    # Pick ten games randomly from the list.
-    games = random.sample(all_games, NUMBER_GOTIES)
+        LOG.info("Loaded games for YEAR END SPECIAL.")
 
-    LOG.info(f"Chose winners!")
+        # Pick ten games randomly from the list.
+        games = random.sample(all_games, NUMBER_GOTIES)
 
-    processed = {}
-    goties = []
-    for i, game_yaml in enumerate(games):
-        game_name = game_yaml["name"]
-        game_id = game_yaml["id"]
+        LOG.info(f"Chose winners!")
 
-        # Just need to process the top three games right now, so make life easy for us and the API.
-        if i < 3:
+        processed = {}
+        goties = []
+        for i, game_yaml in enumerate(games):
+            game_name = game_yaml["name"]
+            game_id = game_yaml["id"]
+
             # Don't query GB API multiple times if we have duplicates in the list for whatever reason.
             if game_name in processed.keys():
                 LOG.info(f"Skipping going to GB for '{game_name}', we have it already.")
@@ -89,146 +90,139 @@ def get_goties_year_end_special():
                 processed[game_name] = goty
                 goties.append(goty)
 
+        return self.render_and_save_images(year, goties)
+
+    def get_goties_regular(self):
+        """Get games of the year (10 of them)."""
+        current_year = datetime.today().year
+
+        # Trying out different distributions
+        year = int(random.triangular(1985, current_year, 2005))
+        year_filter = year_filter_from_year(year)
+        year_count = get_count(year_filter)
+
+        # Make sure we do both ascending and descending order sorting.
+        heads = random.choice([True, False])
+        if heads:
+            order = "asc"
         else:
-            LOG.info(f"Skipping going to GB for '{game_name}', it's not top 3.")
-            goties.append({"name": game_name})
+            order = "desc"
+        LOG.info(f"Chose order {order}.")
 
-    return render_and_save_images(year, goties)
+        # SECRET DON'T LOOK!
+        method = random.choice(list(PickMethods))
+        if method == PickMethods.chronological:
+            LOG.info("Choosing chronologically.")
+            goties = handle_offset_get(year_filter=year_filter,
+                                       sort_field=f"original_release_date: {order}",
+                                       year_count=year_count)
 
-def get_goties_regular():
-    """Get games of the year (10 of them)."""
-    current_year = datetime.today().year
+        elif method == PickMethods.added:
+            LOG.info("Choosing by added date.")
+            goties = handle_offset_get(year_filter=year_filter,
+                                       sort_field=f"date_added: {order}",
+                                       year_count=year_count)
 
-    # Trying out different distributions
-    year = int(random.triangular(1985, current_year, 2005))
-    year_filter = year_filter_from_year(year)
-    year_count = get_count(year_filter)
+        elif method == PickMethods.last_updated:
+            LOG.info("Choosing by last updated date.")
+            goties = handle_offset_get(year_filter=year_filter,
+                                       sort_field=f"date_last_updated: {order}",
+                                       year_count=year_count)
 
-    # Make sure we do both ascending and descending order sorting.
-    heads = random.choice([True, False])
-    if heads:
-        order = "asc"
-    else:
-        order = "desc"
-    LOG.info(f"Chose order {order}.")
+        elif method == PickMethods.num_user_reviews:
+            LOG.info("Choosing by number of user reviews.")
+            goties = handle_offset_get(year_filter=year_filter,
+                                       sort_field=f"number_of_user_reviews: {order}",
+                                       year_count=year_count)
 
-    # SECRET DON'T LOOK!
-    method = random.choice(list(PickMethods))
-    if method == PickMethods.chronological:
-        LOG.info("Choosing chronologically.")
-        goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field=f"original_release_date: {order}",
-                                   year_count=year_count)
+        elif method == PickMethods.gb_id:
+            LOG.info("Choosing by GB id.")
+            goties = handle_offset_get(year_filter=year_filter,
+                                       sort_field=f"id: {order}",
+                                       year_count=year_count)
 
-    elif method == PickMethods.added:
-        LOG.info("Choosing by added date.")
-        goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field=f"date_added: {order}",
-                                   year_count=year_count)
+        elif method == PickMethods.random:
+            LOG.info("Choosing at random.")
+            goties = []
+            for _ in range(NUMBER_GOTIES):
+                goty = get_random_game(year_filter, year_count)
+                goties.append(goty)
 
-    elif method == PickMethods.last_updated:
-        LOG.info("Choosing by last updated date.")
-        goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field=f"date_last_updated: {order}",
-                                   year_count=year_count)
-
-    elif method == PickMethods.num_user_reviews:
-        LOG.info("Choosing by number of user reviews.")
-        goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field=f"number_of_user_reviews: {order}",
-                                   year_count=year_count)
-
-    elif method == PickMethods.gb_id:
-        LOG.info("Choosing by GB id.")
-        goties = handle_offset_get(year_filter=year_filter,
-                                   sort_field=f"id: {order}",
-                                   year_count=year_count)
-
-    elif method == PickMethods.random:
-        LOG.info("Choosing at random.")
-        goties = []
-        for _ in range(NUMBER_GOTIES):
-            goty = get_random_game(year_filter, year_count)
-            goties.append(goty)
-
-    return render_and_save_images(year, goties)
+        return self.render_and_save_images(year, goties)
 
 
-def render_and_save_images(year, goties):
-    """Render images and output tweet text."""
-    caption_out = f"GOTYies for {year}\n"
-    full_out = f"Game of the Year List for {year}\n"
-    for i, goty in enumerate(goties):
-        num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
-        full_out += f"{num}. {goty['name']}\n"
+    def render_and_save_images(self, year, goties):
+        """Render images and output tweet text."""
+        caption_out = f"GOTYies for {year}\n"
+        full_out = f"Game of the Year List for {year}\n"
+        for i, goty in enumerate(goties):
+            num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
+            full_out += f"{num}. {goty['name']}\n"
 
-        # I don't like this, but I want to guarantee we fit the caption limit.
-        caption_out += f"{num}. {goty['name']}"[:32] + "\n"
+            # I don't like this, but I want to guarantee we fit the caption limit.
+            caption_out += f"{num}. {goty['name']}"[:32] + "\n"
 
-    font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
+        font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
 
-    save_goties(year, full_out, font)
-    save_game_images(goties)
+        self.save_goties(year, full_out, font)
+        self.save_game_images(goties)
 
-    LOG.info(f"Your goties are: \n{full_out}")
-    return {
-        "year": year,
-        "captions": [
-            goties[0].get("name", "No name found."),
-            goties[1].get("name", "No name found."),
-            goties[2].get("name", "No name found."),
-            caption_out[:420], # nice
-        ],
-    }
+        LOG.info(f"Your goties are: \n{full_out}")
 
-def save_game_images(goties):
-    """Save game images to files."""
-    for i, goty in enumerate(goties[:3]):
-        img_dict = goty["image"]
+        goty_captions = list(map(lambda g: g.get("name", "No name found."), goties))
+        return {
+            "year": year,
+            "captions": goty_captions + [caption_out[:420]] # nice
+        }
 
-        if img_dict is not None:
+    def save_game_images(self, goties):
+        """Save game images to files."""
+        for i, goty in enumerate(goties):
+            img_dict = goty["image"]
 
-            for item in ["original_url", "super_url", "medium_url", "small_url", "thumb_url",
-                         "tiny_url"]:
-                if item in img_dict:
-                    url = img_dict[item]
-                    break
+            if img_dict is not None:
 
-            LOG.info(f"Cover art for #{i} GOTY: {url}")
+                for item in ["original_url", "super_url", "medium_url", "small_url", "thumb_url",
+                             "tiny_url"]:
+                    if item in img_dict:
+                        url = img_dict[item]
+                        break
 
-        if url is not None:
-            r = requests.get(url, headers=HEADERS, stream=True)
+                LOG.info(f"Cover art for #{i} GOTY: {url}")
 
-            # We can get jpg or png from the API, so handle that correctly.
-            contentType = r.headers["content-type"]
-            if contentType == "image/png":
-                TOP_THREE_FILENAMES[i] = f"test{i}.png"
-            else:
-                TOP_THREE_FILENAMES[i] = f"test{i}.jpg"
+            if url is not None:
+                r = requests.get(url, headers=HEADERS, stream=True)
 
-            chunks = r.iter_content(chunk_size=1024)
-            with open(TOP_THREE_FILENAMES[i], "wb") as stream:
-                for chunk in chunks:
-                    if not chunk:
-                        return
-                    stream.write(chunk)
-                    stream.flush()
+                # We can get jpg or png from the API, so handle that correctly.
+                contentType = r.headers["content-type"]
+                if contentType == "image/png":
+                    self.filenames[i] = f"test{i}.png"
+                else:
+                    self.filenames[i] = f"test{i}.jpg"
 
-            LOG.info(f"Check size of file (must be <{MAX_IMAGE_SIZE_BYTES} to send)")
-            file_size = path.getsize(TOP_THREE_FILENAMES[i])
-            LOG.info(f"Size of {TOP_THREE_FILENAMES[i]} is {file_size}")
-            if file_size >= MAX_IMAGE_SIZE_BYTES:
-                LOG.info("Too big, shrinking.")
-                im = Image.open(TOP_THREE_FILENAMES[i])
-                im = im.resize((im.width//2, im.height//2), Image.ANTIALIAS)
-                im.save(TOP_THREE_FILENAMES[i])
+                chunks = r.iter_content(chunk_size=1024)
+                with open(self.filenames[i], "wb") as stream:
+                    for chunk in chunks:
+                        if not chunk:
+                            return
+                        stream.write(chunk)
+                        stream.flush()
 
-def save_goties(year, out, font):
-    """Save Goties to an image file."""
-    img = Image.new("RGB", (1200, 500), (255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
-    img.save(GOTIES_FILENAME)
+                LOG.info(f"Check size of file (must be <{MAX_IMAGE_SIZE_BYTES} to send)")
+                file_size = path.getsize(self.filenames[i])
+                LOG.info(f"Size of {self.filenames[i]} is {file_size}")
+                if file_size >= MAX_IMAGE_SIZE_BYTES:
+                    LOG.info("Too big, shrinking.")
+                    im = Image.open(self.filenames[i])
+                    im = im.resize((im.width//2, im.height//2), Image.ANTIALIAS)
+                    im.save(self.filenames[i])
+
+    def save_goties(self, year, out, font):
+        """Save Goties to an image file."""
+        img = Image.new("RGB", (1200, 500), (255, 255, 255))
+        draw = ImageDraw.Draw(img)
+        draw.text((40, 40), out, font=font, fill=(0, 0, 0, 255))
+        img.save(self.filenames[-1])
 
 def get_named_game(id):
     """Get specific game from GB API."""
