@@ -153,14 +153,16 @@ class GOTYStore:
 
     def render_and_save_images(self, year, goties):
         """Render images and output tweet text."""
-        caption_out = f"GOTYies for {year}\n"
+        caption_out = f""
         full_out = f"Game of the Year List for {year}\n"
+        remaining_size = 420 - len(caption_out)
+        available_size = remaining_size // 10
         for i, goty in enumerate(goties):
             num = f"{i+1}".zfill(len(str(NUMBER_GOTIES)))
             full_out += f"{num}. {goty['name']}\n"
 
             # I don't like this, but I want to guarantee we fit the caption limit.
-            caption_out += f"{num}. {goty['name']}"[:32] + "\n"
+            caption_out += f"{num}. {goty['name']}"[:available_size-1] + "\n"
 
         font = ImageFont.truetype(path.join(SECRETS_DIR, "FreeMono.ttf"), 40)
 
