@@ -1,16 +1,17 @@
 """Main class for bot."""
 
-from os import path
+import math
+import os
 
 import botskeleton
 
 import gb_query
 
 # Delay between tweets in seconds.
-DELAY = 7200 * 2
+DELAY = math.ceil(3600 * 3.5)
 
 if __name__ == "__main__":
-    SECRETS_DIR = path.join(gb_query.HERE, "SECRETS")
+    SECRETS_DIR = os.path.join(gb_query.HERE, "SECRETS")
     BOT_SKELETON = botskeleton.BotSkeleton(SECRETS_DIR, bot_name="goties_bot", delay=DELAY)
     LOG = BOT_SKELETON.log
 
@@ -29,5 +30,8 @@ if __name__ == "__main__":
                                           gb_query.GOTIES_FILENAME,
                                           captions=res["captions"],
                                           )
+
+        for f in gb_query.TOP_THREE_FILENAMES + [gb_query.GOTIES_FILENAME]:
+            os.remove(f)
 
         BOT_SKELETON.nap()
